@@ -171,7 +171,7 @@ const Dashboard: React.FC = () => {
                 body: JSON.stringify({
                     query: `
                         query ($userId: String!) {
-                            records(userId: $userId) {
+                            records(userId: $userId, sort: "-timestamp", limit: 10) {
                                 itemName
                                 location
                                 timestamp
