@@ -15,6 +15,7 @@ const Dashboard: React.FC = () => {
     const [user, setUser] = useState<string | null>(null); // State to store logged-in user
     const [userId, setUserId] = useState<string | null>(null); // State to store logged-in user
     const [items, setItems] = useState<{ itemName: string; itemType: string; itemQuality: string }[]>([]);
+    const [itemCounts, setItemCounts] = useState<{ userId: string; itemName: string; count: number }[]>([]);
     const [itemSuggestions, setItemSuggestions] = useState<string[]>([]);
     const [recentRecords, setRecentRecords] = useState<{ itemName: string; location: string; timestamp: Date }[]>([]); // State for recent records
     const debouncedSearchTerm = useDebounce(searchTerm, 300); // Use the debounced value for searchTerm
@@ -30,15 +31,23 @@ const Dashboard: React.FC = () => {
                 .filter((item) =>
                     item.itemName.toLowerCase().startsWith(lowerCaseSearchTerm)
                 )
-                .map((item) => `${item.itemName} -- ${item.itemType} -- ${item.itemQuality}`);
+                .map((item) => {
+                    const count = itemCounts.find(x => x.itemName === item.itemName && x.userId === userId)?.count || 0;
+                    const label = count === 0 ? 'Missing' : `Found: ${count}`;
+                    return `${item.itemName} -- ${item.itemType} -- ${item.itemQuality}${label ? ` -- ${label}` : ''}`;
+                });
 
             // Include matches that contain the search term but don't start with it
             const secondarySuggestions = items
                 .filter((item) =>
-                (item.itemName.toLowerCase().includes(lowerCaseSearchTerm) ||
-                    item.itemType.toLowerCase().includes(lowerCaseSearchTerm))
+                    (item.itemName.toLowerCase().includes(lowerCaseSearchTerm) ||
+                        item.itemType.toLowerCase().includes(lowerCaseSearchTerm))
                 )
-                .map((item) => `${item.itemName} -- ${item.itemType} -- ${item.itemQuality}`);
+                .map((item) => {
+                    const count = itemCounts.find(x => x.itemName === item.itemName && x.userId === userId)?.count || 0;
+                    const label = count === 0 ? 'Missing' : `Found: ${count}`;
+                    return `${item.itemName} -- ${item.itemType} -- ${item.itemQuality}${label ? ` -- ${label}` : ''}`;
+                });
 
             // Combine prioritized and secondary suggestions
             const suggestions = Array.from(new Set([...prioritizedSuggestions, ...secondarySuggestions]));
@@ -46,7 +55,7 @@ const Dashboard: React.FC = () => {
         } else {
             setItemSuggestions([]);
         }
-    }, [debouncedSearchTerm, items]); // Fetch suggestions only when the debounced value or item lists change
+    }, [debouncedSearchTerm, items, itemCounts, userId]); // Fetch suggestions only when the debounced value, item lists, itemCounts, or userId change
 
     const handleSubmit = async () => {
         setLoading(true);
@@ -78,6 +87,7 @@ const Dashboard: React.FC = () => {
             setSelectedItem('');
             fetchProgress();
             fetchRecentRecords();
+            fetchItemCounts();
         } catch (err: any) {
             console.error(err);
             setError(err.message || 'An error occurred');
@@ -195,11 +205,33 @@ const Dashboard: React.FC = () => {
         }
     };
 
+    const fetchItemCounts = async () => {
+        if (!userId)
+            return;
+        try {
+            const response = await fetch(`http://localhost:3000/item-counts?userId=${userId}`, {
+                method: 'GET',
+                credentials: 'include', // Include cookies for authentication
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            // console.log(data);
+            setItemCounts(data); // Assuming the response is an array of recent records
+        } catch (err: any) {
+            console.error('Failed to fetch recent records:', err);
+        }
+    };
+
     useEffect(() => {
         fetchProgress();
         fetchUser(); // Fetch the logged-in user's information
         fetchItems();
         fetchRecentRecords();
+        fetchItemCounts();
     }, [userId]);
 
     const calculatePercentage = (found: number, total: number): number => {
@@ -310,7 +342,7 @@ const Dashboard: React.FC = () => {
                             <List.Content>
                                 <List.Header>{record.itemName}</List.Header>
                                 <List.Description>
-                                    Location: {record.location} | Added At: {new Date(record.timestamp).toLocaleString()}
+                                    Location: {record.location} | Added At: {new Date(record.timestamp).toLocaleString()} | Found: {itemCounts.find(x => x.itemName === record.itemName && x.userId === userId)?.count || 0}
                                 </List.Description>
                             </List.Content>
                         </List.Item>
