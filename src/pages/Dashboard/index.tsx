@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Container, Form, Grid, Header, Segment, Button, Progress, Menu, Dropdown, List } from 'semantic-ui-react';
+import { Container, Form, Grid, Header, Segment, Button, Progress, Menu, Dropdown, List, Checkbox } from 'semantic-ui-react';
 import { useNavigate } from 'react-router-dom';
 import useDebounce from '../../hooks/useDebounce';
 import { useDispatch, useSelector } from "react-redux";
@@ -18,6 +18,8 @@ const Dashboard: React.FC = () => {
     const [itemSuggestions, setItemSuggestions] = useState<string[]>([]);
     const [selectedItem, setSelectedItem] = useState<string>('');
     const [location, setLocation] = useState('');
+    const [enableDateOverride, setEnableDateOverride] = useState(false);
+    const [dateOverride, setDateOverride] = useState('');
     const { loading, error } = useSelector((state: RootState) => state.records.createRecord);
     const debouncedSearchTerm = useDebounce(searchTerm, 300); // Use the debounced value for searchTerm
 
@@ -30,10 +32,10 @@ const Dashboard: React.FC = () => {
     // Other Metadata
     const { items } = useSelector((state: RootState) => state.items);
     const { stash } = useSelector((state: RootState) => state.stash);
-    
+
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    
+
     useEffect(() => {
         dispatch(fetchUserRequest());
     }, []);
@@ -105,18 +107,22 @@ const Dashboard: React.FC = () => {
 
         try {
             const [itemName] = selectedItem.split(' -- '); // Extract itemName from selectedItem
-            dispatch(createRecordRequest({ itemName, location }))
+
+            dispatch(createRecordRequest({
+                itemName,
+                location,
+                ...(enableDateOverride && dateOverride
+                    ? { dateOverride: new Date(dateOverride).toISOString() } // <-- Convert to string
+                    : {})
+            }));
             setSearchTerm('');
             setSelectedItem('');
-            // fetchProgress();
             dispatch(fetchRecordsRequest());
             dispatch(fetchStashRequest());
         } catch (err: any) {
             console.error(err);
-        } finally {
         }
     };
-
 
     const calculatePercentage = (found: number, total: number): number => {
         return total > 0 ? (found / total) * 100 : 0;
@@ -182,6 +188,29 @@ const Dashboard: React.FC = () => {
                                     onChange={(e) => setLocation(e.target.value)}
                                 />
                             </Form.Field>
+                        </Grid.Column>
+
+                        <Grid.Column width={16}>
+                            <Form.Field>
+                                <Checkbox
+                                    label="Specify Date Override"
+                                    checked={enableDateOverride}
+                                    onChange={(_, data) => setEnableDateOverride(!!data.checked)}
+                                />
+                            </Form.Field>
+                        </Grid.Column>
+                        <Grid.Column width={16}>
+                            {enableDateOverride && (
+                                <Form.Field>
+                                    <label>Date Override</label>
+                                    <input
+                                        type="dateOverride"
+                                        value={dateOverride}
+                                        onChange={e => setDateOverride(e.target.value)}
+                                        disabled={!enableDateOverride}
+                                    />
+                                </Form.Field>
+                            )}
                         </Grid.Column>
                         <Grid.Column width={16}>
                             <Button type="submit" primary loading={loading} disabled={loading || !selectedItem}>
