@@ -1,86 +1,66 @@
 import React, { useState } from "react";
-import { Container, Form, Header, Segment, Button } from "semantic-ui-react";
+import { Container, Form, Header, Segment, Button, Message } from "semantic-ui-react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../../redux/store";
+import { registerRequest, loginRequest } from "../../redux/slices/auth-slice";
 
 const Register: React.FC = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const navigate = useNavigate(); 
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const [credentials, setCredentials] = useState({ email: '', password: '' });
 
-    const handleRegister = async () => {
-        setLoading(true);
-        setError(null);
+    const {
+        loading: registerLoading,
+        error: registerError,
+    } = useSelector((state: RootState) => state.auth.register);
 
-        try {
-            // Call the registration API
-            const registerResponse = await fetch('http://localhost:3001/users', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-            });
+    const {
+        loading: loginLoading,
+        error: loginError,
+    } = useSelector((state: RootState) => state.auth.login);
 
-            if (!registerResponse.ok) {
-                throw new Error(`Registration Error: ${registerResponse.statusText}`);
-            }
-
-            // Automatically log in the user after successful registration
-            const loginResponse = await fetch('http://localhost:3001/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-            });
-
-            if (!loginResponse.ok) {
-                throw new Error(`Login Error: ${loginResponse.statusText}`);
-            }
-
-            const loginData = loginResponse;
-            console.log('Login successful:', loginData);
-
-            // alert('Registration and login successful! Redirecting to Dashboard...');
-            navigate('/'); // Redirect to Dashboard
-        } catch (err: any) {
-            console.error(err);
-            setError(err.message || 'An error occurred');
-        } finally {
-            setLoading(false);
-        }
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setCredentials({ ...credentials, [e.target.name]: e.target.value });
     };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        dispatch(registerRequest(credentials));
+        dispatch(loginRequest(credentials));
+        navigate('/');
+    };
+
+    const { email, password } = credentials;
 
     return (
         <Container text style={{ paddingTop: '2em' }}>
             <Header as="h1" textAlign="center">Register</Header>
             <Segment>
-                <Form onSubmit={(e) => { e.preventDefault(); handleRegister(); }}>
-                    <Form.Field>
-                        <label>Email</label>
-                        <input
-                            type="text"
-                            placeholder="Enter email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
-                    </Form.Field>
-                    <Form.Field>
-                        <label>Password</label>
-                        <input
-                            type="password"
-                            placeholder="Enter password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
-                    </Form.Field>
-                    <Button type="submit" primary loading={loading} disabled={loading || !email || !password}>
+                <Form onSubmit={handleSubmit}>
+                    <Form.Input
+                        label="Email"
+                        name="email"
+                        value={email}
+                        onChange={handleChange}
+                        required
+                    />
+                    <Form.Input
+                        label="Password"
+                        name="password"
+                        type="password"
+                        value={password}
+                        onChange={handleChange}
+                        required
+                    />
+
+                    {(registerError) && <Message error header="Registration Error" content={registerError} />}
+                    {(loginError) && <Message error header="Login Error" content={loginError} />}
+
+                    <Button type="submit" primary loading={registerLoading} disabled={registerLoading || !email || !password}>
                         Register
                     </Button>
                 </Form>
-                {error && <p style={{ color: 'red' }}>{error}</p>}
             </Segment>
         </Container>
     );

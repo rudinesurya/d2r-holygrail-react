@@ -13,14 +13,17 @@ const selectAuthBaseUri = (state: RootState) => state.config.authBaseUri;
 const fetchUserApi = async (authBaseUri: string) => {
     const response = await fetch(`${authBaseUri}/users`, {
         method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        },
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
     });
-
+    
     const responseData: GetUserResponseDto = await response.json();
-
+    
     if (!response.ok) {
-        throw new Error(responseData.system_message || 'Get User failed');
+        
+        throw new Error(responseData.message || 'Get User failed');
     }
 
     return responseData;
@@ -37,16 +40,17 @@ function* fetchUserSaga() {
 }
 
 const loginApi = async (authBaseUri: string, payload: LoginUserDto) => {
-    const response = await fetch(`${authBaseUri}/login`, {
+    const response = await fetch(`${authBaseUri}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
     });
 
     const responseData: LoginUserResponseDto = await response.json();
 
     if (!response.ok) {
-        throw new Error(responseData.system_message || 'Login failed');
+        throw new Error(responseData.message || 'Login failed');
     }
 
     return responseData;
@@ -72,7 +76,7 @@ const registerApi = async (authBaseUri: string, payload: CreateUserDto) => {
     const responseData: CreateUserResponseDto = await response.json();
 
     if (!response.ok) {
-        throw new Error(responseData.system_message || 'Registration failed');
+        throw new Error(responseData.message || 'Registration failed');
     }
 
     return responseData;
@@ -99,7 +103,7 @@ const logoutApi = async (authBaseUri: string) => {
     const responseData: LogoutUserResponseDto = await response.json();
 
     if (!response.ok) {
-        throw new Error(responseData.system_message || 'Logout failed');
+        throw new Error(responseData.message || 'Logout failed');
     }
 
     return responseData;

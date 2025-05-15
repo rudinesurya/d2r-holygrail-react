@@ -1,5 +1,5 @@
 export class LoginUserResponseDto {
-    system_message?: string;
+    message?: string;
     data!: {
         token: string;
     };

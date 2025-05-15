@@ -1,4 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { CreateUserDto } from '../../dto/auth/create-user-payload.dto';
+import { LoginUserDto } from '../../dto/auth/login-user-payload.dto';
 
 interface AuthState {
     login: {
@@ -41,7 +43,7 @@ const authSlice = createSlice({
     initialState,
     reducers: {
         // Login actions
-        loginRequest(state) {
+        loginRequest(state, action: PayloadAction<LoginUserDto>) {
             state.login.loading = true;
             state.login.error = undefined;
         },
@@ -51,11 +53,12 @@ const authSlice = createSlice({
         },
         loginFailure(state, action: PayloadAction<{ error: string }>) {
             state.login.loading = false;
+            state.login.token = null;
             state.login.error = action.payload.error;
         },
 
         // Register actions
-        registerRequest(state) {
+        registerRequest(state, action: PayloadAction<CreateUserDto>) {
             state.register.loading = true;
             state.register.error = undefined;
         },

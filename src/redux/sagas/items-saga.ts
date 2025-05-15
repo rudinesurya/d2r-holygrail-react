@@ -28,11 +28,11 @@ const fetchItemsApi = async (graphqlBaseUri: string) => {
             `,
         }),
     });
-
+    
     const responseData: GetItemsResponseDto = await response.json();
 
     if (!response.ok) {
-        throw new Error(responseData.system_message || 'Get Items failed');
+        throw new Error(responseData.message || 'Get Items failed');
     }
 
     return responseData;
