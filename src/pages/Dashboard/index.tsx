@@ -10,22 +10,30 @@ import { fetchStashRequest } from "../../redux/slices/stash-slice";
 import { fetchUserRequest } from "../../redux/slices/auth-slice";
 
 const Dashboard: React.FC = () => {
+    // Auth
+    const { userId, email } = useSelector((state: RootState) => state.auth.fetchUser);
+
+    // Creating Record
     const [searchTerm, setSearchTerm] = useState('');
     const [itemSuggestions, setItemSuggestions] = useState<string[]>([]);
     const [selectedItem, setSelectedItem] = useState<string>('');
     const [location, setLocation] = useState('');
-
-    // NEW from redux
-    const { userId, email } = useSelector((state: RootState) => state.auth.fetchUser);
-    const { items } = useSelector((state: RootState) => state.items);
-    const { recentRecords } = useSelector((state: RootState) => state.records.fetchRecentRecords);
-    const { stash } = useSelector((state: RootState) => state.stash);
     const { loading, error } = useSelector((state: RootState) => state.records.createRecord);
-
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
     const debouncedSearchTerm = useDebounce(searchTerm, 300); // Use the debounced value for searchTerm
 
+    // Tracking Progress
+    const [progress, setProgress] = useState({ found: 0, total: 519 });
+    const [uniqueItemsProgress, setUniqueItemsProgress] = useState({ found: 0, total: 392 });
+    const [setItemsProgress, setSetItemsProgress] = useState({ found: 0, total: 127 });
+    const { recentRecords } = useSelector((state: RootState) => state.records.fetchRecentRecords);
+
+    // Other Metadata
+    const { items } = useSelector((state: RootState) => state.items);
+    const { stash } = useSelector((state: RootState) => state.stash);
+    
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+    
     useEffect(() => {
         dispatch(fetchUserRequest());
     }, []);
@@ -34,7 +42,7 @@ const Dashboard: React.FC = () => {
         dispatch(fetchItemsRequest());
         dispatch(fetchRecordsRequest());
         dispatch(fetchStashRequest());
-    }, [userId])
+    }, [userId]);
 
     useEffect(() => {
         if (debouncedSearchTerm.trim() !== '') {
@@ -70,6 +78,27 @@ const Dashboard: React.FC = () => {
             setItemSuggestions([]);
         }
     }, [debouncedSearchTerm, items, stash, userId]); // Fetch suggestions only when the debounced value, item lists, itemCounts, or userId change
+
+    useEffect(() => {
+        if (!items.length || !stash.length || !userId) return;
+
+        // Filter unique and set items
+        const uniqueItems = items.filter(item => item.itemQuality === 'Unique');
+        const setItems = items.filter(item => item.itemQuality === 'Set');
+
+        // Count how many unique/set items have been collected by the user
+        const foundUnique = uniqueItems.filter(item =>
+            stash.some(s => s.itemName === item.itemName && s.userId === userId && s.count > 0)
+        ).length;
+
+        const foundSet = setItems.filter(item =>
+            stash.some(s => s.itemName === item.itemName && s.userId === userId && s.count > 0)
+        ).length;
+
+        setProgress({ found: foundUnique + foundSet, total: (uniqueItems.length + setItems.length) });
+        setUniqueItemsProgress({ found: foundUnique, total: uniqueItems.length });
+        setSetItemsProgress({ found: foundSet, total: setItems.length });
+    }, [items, stash, userId]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -165,6 +194,28 @@ const Dashboard: React.FC = () => {
             </Segment>
 
             {/* Progress Section */}
+            <Segment>
+                <Header as="h3">Progress</Header>
+                {progress && (
+                    <>
+                        <p>Total Progress: {progress.found}/{progress.total}</p>
+                        <Progress percent={calculatePercentage(progress.found, progress.total)} precision={2} progress />
+                    </>
+                )}
+                {uniqueItemsProgress && (
+                    <>
+                        <p style={{ color: '#b8860b' }}>Unique Items Progress: {uniqueItemsProgress.found}/{uniqueItemsProgress.total}</p>
+                        <Progress percent={calculatePercentage(uniqueItemsProgress.found, uniqueItemsProgress.total)} precision={2} progress color="brown" />
+                    </>
+                )}
+                {setItemsProgress && (
+                    <>
+                        <p style={{ color: 'green' }}>Set Items Progress: {setItemsProgress.found}/{setItemsProgress.total}</p>
+                        <Progress percent={calculatePercentage(setItemsProgress.found, setItemsProgress.total)} precision={2} progress color="green" />
+                    </>
+                )}
+                {!progress && <p>Loading progress...</p>}
+            </Segment>
 
             {/* Recent Records Section */}
             <Segment>
